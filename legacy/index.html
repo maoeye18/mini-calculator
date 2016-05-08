@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Calculator</title>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">   
+        <script>
+            //небольшая инициализация
+            document.addEventListener('DOMContentLoaded', function() {
+                document.forms.expression.elements.calcURL.value = 'http://localhost/Calculator/calc.php';
+            })
+            
+            //Функции для работы по принципу JSONP
+            //колбэк функция, которая будет вызвана в коде, подгруженном с сервера
+            function updateAnswer(answer) {
+                if (answer.result === 'calculated') {
+                    document.getElementById('calcErrorMsg').textContent = '';
+                    document.forms.expression.elements.expression.value = answer.answer;                    
+                } else {
+                    document.getElementById('calcErrorMsg').textContent = answer.message;
+                }
+                document.getElementById("jsonpAskAnswer").remove();
+            }
+            
+            //создаем тэг скрипт, со ссылкой на генерируемый сервером js-код 
+            function addScriptForJSONP(src) {
+                var elm = document.createElement("script");
+                elm.id = "jsonpAskAnswer";
+                elm.src = src;
+                document.head.appendChild(elm);
+            }
+            
+            //Функции для работы по принципу AJAX
+            var requester = new XMLHttpRequest();
+            requester.onreadystatechange = putAnswer;
+            
+            function putAnswer() {
+	        if (requester.readyState === 4) {
+	            if(requester.status === 200) {
+                        var response = JSON.parse(requester.responseText);
+                        if (response.result === 'calculated') {
+                            document.getElementById('calcErrorMsg').textContent = '';
+                            document.forms.expression.elements.expression.value = response.answer;
+                        } else {
+                            document.getElementById('calcErrorMsg').textContent = response.message;
+                        }
+	            } else {
+                        alert("Что-то пошло не так, код ответа: " + requester.status + response.status);
+                    }
+	        }
+            }
+            
+            //Обработка нажатия на кнопку "посчитать"
+            function buttonClick()
+            {
+                if (document.forms.expression.elements.useJSONP.checked) {
+                    var params = '?expression=' + encodeURIComponent(document.forms.expression.elements.expression.value)
+                               + '&resform=' + encodeURIComponent('jsonp') 
+                               + '&callback=' + encodeURIComponent('updateAnswer');
+                    addScriptForJSONP(document.forms.expression.elements.calcURL.value + params);
+                } else {                                        
+                    var params = '?expression=' + encodeURIComponent(document.forms.expression.elements.expression.value);
+                    requester.open('GET', document.forms.expression.elements.calcURL.value + params, true);
+                    requester.send();
+                }
+            }
+        </script>
+    </head>
+    <body>
+        <p>Небольшое веб-приложение "Калькулятор". Все интересности в коде.</p>
+        <form name="expression" onsubmit="buttonClick();return false;" > <!-- обход стандартной отправки формы -->
+            <div style="width: 50%">
+                <input type="checkbox" name="useJSONP" /> Использовать JSONP
+                <p> Введите адрес сервиса "калькулятор": <br>
+                <input type ="text" name="calcURL" style="width: 100%" >
+                </p>
+                <p> Введите выражение: <br>
+                <input type="text" name="expression" style="width: 100%" />
+                </p>
+                <p id='calcErrorMsg'></p>
+                <input type="submit" name="calc" value="Посчитать" style="width: 100%" />
+             </div>
+        </form>
+    </body>
+</html>
